@@ -1,84 +1,140 @@
-// Copyright (c) HashiCorp, Inc.
-// SPDX-License-Identifier: MPL-2.0
-
 package provider
 
 import (
 	"context"
-	"net/http"
+	"os"
 
 	"github.com/hashicorp/terraform-plugin-framework/datasource"
+	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-framework/provider"
 	"github.com/hashicorp/terraform-plugin-framework/provider/schema"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/types"
+	"github.com/josh-silvas/terraform-provider-kea/tools/kea"
 )
 
-// Ensure ScaffoldingProvider satisfies various provider interfaces.
-var _ provider.Provider = &ScaffoldingProvider{}
+// Ensure KeaCBProvider satisfies various provider interfaces.
+var _ provider.Provider = &KeaCBProvider{}
 
-// ScaffoldingProvider defines the provider implementation.
-type ScaffoldingProvider struct {
+// KeaCBProvider defines the provider implementation for Kea configuration-backend.
+type KeaCBProvider struct {
 	// version is set to the provider version on release, "dev" when the
 	// provider is built and ran locally, and "test" when running acceptance
 	// testing.
 	version string
 }
 
-// ScaffoldingProviderModel describes the provider data model.
-type ScaffoldingProviderModel struct {
-	Endpoint types.String `tfsdk:"endpoint"`
+// KeaProviderModel describes the provider data model.
+type KeaProviderModel struct {
+	Username types.String `tfsdk:"username"`
+	Password types.String `tfsdk:"password"`
 }
 
-func (p *ScaffoldingProvider) Metadata(ctx context.Context, req provider.MetadataRequest, resp *provider.MetadataResponse) {
-	resp.TypeName = "scaffolding"
+// Metadata : Defines the provider metadata.
+func (p *KeaCBProvider) Metadata(ctx context.Context, req provider.MetadataRequest, resp *provider.MetadataResponse) {
+	resp.TypeName = "kea"
 	resp.Version = p.version
 }
 
-func (p *ScaffoldingProvider) Schema(ctx context.Context, req provider.SchemaRequest, resp *provider.SchemaResponse) {
+// Schema : Defines the provider schema.
+func (p *KeaCBProvider) Schema(ctx context.Context, req provider.SchemaRequest, resp *provider.SchemaResponse) {
 	resp.Schema = schema.Schema{
 		Attributes: map[string]schema.Attribute{
-			"endpoint": schema.StringAttribute{
-				MarkdownDescription: "Example provider attribute",
+			"username": schema.StringAttribute{
+				MarkdownDescription: "Kea ctrl-agent username. Defaults to env var `KEA_USERNAME` if not specified.",
 				Optional:            true,
+			},
+			"password": schema.StringAttribute{
+				MarkdownDescription: "Kea ctrl-agent password. Defaults to env var `KEA_PASSWORD` if not specified.",
+				Optional:            true,
+				Sensitive:           true,
 			},
 		},
 	}
 }
 
-func (p *ScaffoldingProvider) Configure(ctx context.Context, req provider.ConfigureRequest, resp *provider.ConfigureResponse) {
-	var data ScaffoldingProviderModel
+// Configure : Defines the provider configuration.
+func (p *KeaCBProvider) Configure(ctx context.Context, req provider.ConfigureRequest, resp *provider.ConfigureResponse) {
+	// Define an empty configuration.
+	var config KeaProviderModel
 
-	resp.Diagnostics.Append(req.Config.Get(ctx, &data)...)
+	// Read/populate the provider data from the configuration.
+	// Also append any diagnostics to the diagnostics list.
+	resp.Diagnostics.Append(req.Config.Get(ctx, &config)...)
 
+	// If there are any diagnostics, stop here.
 	if resp.Diagnostics.HasError() {
 		return
 	}
 
-	// Configuration values are now available.
-	// if data.Endpoint.IsNull() { /* ... */ }
+	// Catch any unknown attribute errors here and stop.
+	if resp.Diagnostics.HasError() {
+		return
+	}
 
-	// Example client configuration for data sources and resources
-	client := http.DefaultClient
+	// Fetch the username and password from the environment, but override if
+	// the practitioner provided a value in the configuration.
+	username := os.Getenv("KEA_USERNAME")
+	password := os.Getenv("KEA_PASSWORD")
+
+	if username == "" {
+		username = config.Username.ValueString()
+	}
+	if password == "" {
+		password = config.Password.ValueString()
+	}
+
+	// After all is set, check if the username and password are empty.
+	if username == "" {
+		resp.Diagnostics.AddAttributeError(
+			path.Root("username"),
+			"Missing Kea DHCP API Username",
+			"The provider cannot create the Kea DHCP API client as there is a missing or empty value for "+
+				"the Kea DHCP API username. Set the username value in the configuration or use the KEA_USERNAME "+
+				"environment variable. If either is already set, ensure the value is not empty.",
+		)
+	}
+	if password == "" {
+		resp.Diagnostics.AddAttributeError(
+			path.Root("password"),
+			"Missing Kea DHCP API Password",
+			"The provider cannot create the Kea DHCP API client as there is a missing or empty value for "+
+				"the Kea DHCP API password. Set the password value in the configuration or use the KEA_PASSWORD "+
+				"environment variable. If either is already set, ensure the value is not empty.",
+		)
+	}
+	// Stop here if there are any errors.
+	if resp.Diagnostics.HasError() {
+		return
+	}
+
+	// Create the Kea DHCP API client.
+	client := kea.New()
+
+	// Make the Kea DHCP client available during DataSource and Resource
+	// type Configure methods.
 	resp.DataSourceData = client
 	resp.ResourceData = client
 }
 
-func (p *ScaffoldingProvider) Resources(ctx context.Context) []func() resource.Resource {
+// Resources : Defines the provider resources.
+func (p *KeaCBProvider) Resources(ctx context.Context) []func() resource.Resource {
 	return []func() resource.Resource{
-		NewExampleResource,
+		NewRemoteSubnet4Resource,
 	}
 }
 
-func (p *ScaffoldingProvider) DataSources(ctx context.Context) []func() datasource.DataSource {
+// DataSources : Defines the provider data sources.
+func (p *KeaCBProvider) DataSources(ctx context.Context) []func() datasource.DataSource {
 	return []func() datasource.DataSource{
-		NewExampleDataSource,
+		NewRemoteSubnet4DataSource,
 	}
 }
 
+// New : Creates a new provider.
 func New(version string) func() provider.Provider {
 	return func() provider.Provider {
-		return &ScaffoldingProvider{
+		return &KeaCBProvider{
 			version: version,
 		}
 	}

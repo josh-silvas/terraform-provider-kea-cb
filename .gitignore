@@ -25,7 +25,14 @@ website/node_modules
 *.test
 *.iml
 
-website/vendor
+examples/**/terraform.tfstate
+examples/**/terraform.tfstate.backup
+examples/**/.terraform
+examples/provider-install-verification/*
+
+# Ignore binary files
+develop/terraform-provider-kea
+develop/.env
 
 # Test exclusions
 !command/test-fixtures/**/*.tfstate

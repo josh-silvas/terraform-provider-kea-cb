@@ -1,18 +1,23 @@
-# Terraform Provider Scaffolding (Terraform Plugin Framework)
+# Terraform Provider Kea Configuration Backend
 
-_This template repository is built on the [Terraform Plugin Framework](https://github.com/hashicorp/terraform-plugin-framework). The template repository built on the [Terraform Plugin SDK](https://github.com/hashicorp/terraform-plugin-sdk) can be found at [terraform-provider-scaffolding](https://github.com/hashicorp/terraform-provider-scaffolding). See [Which SDK Should I Use?](https://developer.hashicorp.com/terraform/plugin/framework-benefits) in the Terraform documentation for additional information._
+_This Terraform provider is designed to interact with [ISC Kea's Configuration Backend](https://kea.readthedocs.io/en/latest/arm/config.html#kea-configuration-backend)
+to manage Kea configuration stored in a remote backend such as MySQL or PostgreSQL._
 
-This repository is a *template* for a [Terraform](https://www.terraform.io) provider. It is intended as a starting point for creating Terraform providers, containing:
+> **Note:** This provider requires the [libdhcp_db_cmds.so](https://kea.readthedocs.io/en/latest/arm/hooks.html#libdhcp-cb-cmds-so-configuration-backend-commands).
+> hook library to be installed and configured on the Kea server. See the [Kea documentation](https://kea.readthedocs.io/en/latest/arm/) for more information.
+
+This repository is built on Terraform scaffolding for providers and contains the following:
 
 - A resource and a data source (`internal/provider/`),
 - Examples (`examples/`) and generated documentation (`docs/`),
 - Miscellaneous meta files.
 
-These files contain boilerplate code that you will need to edit to create your own Terraform provider. Tutorials for creating Terraform providers can be found on the [HashiCorp Developer](https://developer.hashicorp.com/terraform/tutorials/providers-plugin-framework) platform. _Terraform Plugin Framework specific guides are titled accordingly._
-
-Please see the [GitHub template repository documentation](https://help.github.com/en/github/creating-cloning-and-archiving-repositories/creating-a-repository-from-a-template) for how to create a new repository from this template on GitHub.
-
-Once you've written your provider, you'll want to [publish it on the Terraform Registry](https://developer.hashicorp.com/terraform/registry/providers/publishing) so that others can use it.
+# Table of Contents
+1. [Requirements](#requirements)
+2. [Building The Provider](#building-the-provider)
+3. [Adding Dependencies](#adding-dependencies)
+4. [Using The Provider](#using-the-provider)
+5. [Developing The Provider](#developing-the-provider)
 
 ## Requirements
 
@@ -22,43 +27,79 @@ Once you've written your provider, you'll want to [publish it on the Terraform R
 ## Building The Provider
 
 1. Clone the repository
-1. Enter the repository directory
-1. Build the provider using the Go `install` command:
+2. Enter the repository directory
+3. Build the provider using the Go `install` command or the Makefile `build` target.
 
 ```shell
-go install
+make build
 ```
 
 ## Adding Dependencies
 
 This provider uses [Go modules](https://github.com/golang/go/wiki/Modules).
-Please see the Go documentation for the most up to date information about using Go modules.
+Please see the Go documentation for the most up-to-date information about using Go modules.
 
 To add a new dependency `github.com/author/dependency` to your Terraform provider:
 
 ```shell
-go get github.com/author/dependency
-go mod tidy
+go get -u github.com/author/dependency
+go mod tidy && go mod vendor
 ```
 
 Then commit the changes to `go.mod` and `go.sum`.
 
 ## Using the provider
 
-Fill this in for each provider
+### Provider Configuration
+
+```hcl
+provider "kea" {
+  username = "some-kea-ctrl-user"
+  password = "some-kea-ctrl-password"
+}
+```
+
+### Data Source Configuration
+#### Remote Subet4 Commands
+kea_remote_subnet4_data_source
+```hcl
+data "kea_remote_subnet4_data_source" "example" {
+  hostname = "kea-primary.example.com"
+  prefix   = "192.168.230.0/24"
+}
+
+```
+
+### Resource Configuration
+#### Remote Subet4 Commands
+kea_remote_subnet4_resource
+```hcl
+resource "kea_remote_subnet4_resource" "example" {
+  hostname = "kea-primary.example.com"
+  subnet   = "192.168.225.0/24"
+  pools = [
+    { pool = "192.168.225.50-192.168.225.150" }
+  ]
+  relay = [
+    { ip_address = "192.168.225.1" }
+  ]
+  option_data = [
+    { code = 3, name = "routers", data = "192.168.225.1" },
+    { code = 15, name = "domain-name", data = "example.com" },
+    { code = 6, name = "domain-name-servers", data = "4.2.2.2, 8.8.8.8", always_send = true },
+  ]
+}
+```
 
 ## Developing the Provider
 
-If you wish to work on the provider, you'll first need [Go](http://www.golang.org) installed on your machine (see [Requirements](#requirements) above).
+If you wish to work on the provider, you'll first need [Go](http://www.golang.org)
+installed on your machine (see [Requirements](#requirements) above).
 
-To compile the provider, run `go install`. This will build the provider and put the provider binary in the `$GOPATH/bin` directory.
+See the [DEVELOPMENT](develop/README.md) documentation for more information.
 
-To generate or update documentation, run `go generate`.
 
-In order to run the full suite of Acceptance tests, run `make testacc`.
+## Resources
 
-*Note:* Acceptance tests create real resources, and often cost money to run.
+* [Josh Silvas](mailto:josh@jsilvas.com)
 
-```shell
-make testacc
-```
