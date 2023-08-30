@@ -17,9 +17,11 @@ release: ## Run goreleaser to create a release
 	@goreleaser --rm-dist --skip-validate --skip-announce
 .PHONY: release
 
-__gpg:
-	@echo ${GPG_PRIVATE_KEY} | base64 -d > private.key
-	@gpg --import private.key
+tag: ## Tag and push the version defined in VERSION file
+	@git tag -d $(VERSION) || true
+	@git tag $(VERSION)
+	@git push origin $(VERSION)
+.PHONY: tag
 
 # -------------------------------------------------------------------------------------------
 # CODE-QUALITY/TESTS: Linting and testing directives.
