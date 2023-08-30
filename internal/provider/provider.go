@@ -31,13 +31,13 @@ type KeaProviderModel struct {
 }
 
 // Metadata : Defines the provider metadata.
-func (p *KeaCBProvider) Metadata(ctx context.Context, req provider.MetadataRequest, resp *provider.MetadataResponse) {
+func (p *KeaCBProvider) Metadata(_ context.Context, _ provider.MetadataRequest, resp *provider.MetadataResponse) {
 	resp.TypeName = "kea"
 	resp.Version = p.version
 }
 
 // Schema : Defines the provider schema.
-func (p *KeaCBProvider) Schema(ctx context.Context, req provider.SchemaRequest, resp *provider.SchemaResponse) {
+func (p *KeaCBProvider) Schema(_ context.Context, _ provider.SchemaRequest, resp *provider.SchemaResponse) {
 	resp.Schema = schema.Schema{
 		Attributes: map[string]schema.Attribute{
 			"username": schema.StringAttribute{
@@ -118,14 +118,14 @@ func (p *KeaCBProvider) Configure(ctx context.Context, req provider.ConfigureReq
 }
 
 // Resources : Defines the provider resources.
-func (p *KeaCBProvider) Resources(ctx context.Context) []func() resource.Resource {
+func (p *KeaCBProvider) Resources(_ context.Context) []func() resource.Resource {
 	return []func() resource.Resource{
 		NewRemoteSubnet4Resource,
 	}
 }
 
 // DataSources : Defines the provider data sources.
-func (p *KeaCBProvider) DataSources(ctx context.Context) []func() datasource.DataSource {
+func (p *KeaCBProvider) DataSources(_ context.Context) []func() datasource.DataSource {
 	return []func() datasource.DataSource{
 		NewRemoteSubnet4DataSource,
 	}

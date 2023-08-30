@@ -62,12 +62,12 @@ type (
 )
 
 // Metadata : Returns the resource type name and supported features.
-func (r *remoteSubnet4Resource) Metadata(ctx context.Context, req resource.MetadataRequest, resp *resource.MetadataResponse) {
+func (r *remoteSubnet4Resource) Metadata(_ context.Context, req resource.MetadataRequest, resp *resource.MetadataResponse) {
 	resp.TypeName = req.ProviderTypeName + "_remote_subnet4_resource"
 }
 
 // Schema : Returns the resource schema.
-func (r *remoteSubnet4Resource) Schema(ctx context.Context, req resource.SchemaRequest, resp *resource.SchemaResponse) {
+func (r *remoteSubnet4Resource) Schema(_ context.Context, _ resource.SchemaRequest, resp *resource.SchemaResponse) {
 	resp.Schema = schema.Schema{
 		// This description is used by the documentation generator and the language server.
 		MarkdownDescription: "Remote Subnet4 resource",
@@ -117,7 +117,7 @@ func (r *remoteSubnet4Resource) Schema(ctx context.Context, req resource.SchemaR
 }
 
 // Configure : Configures the resource client data and populates the client interface.
-func (r *remoteSubnet4Resource) Configure(ctx context.Context, req resource.ConfigureRequest, resp *resource.ConfigureResponse) {
+func (r *remoteSubnet4Resource) Configure(_ context.Context, req resource.ConfigureRequest, resp *resource.ConfigureResponse) {
 	// Prevent panic if the provider has not been configured.
 	if req.ProviderData == nil {
 		return
@@ -202,6 +202,8 @@ func (r *remoteSubnet4Resource) Create(ctx context.Context, req resource.CreateR
 			return fr
 		}(),
 	}
+
+	// nolint: contextcheck
 	respData, err := r.client.RemoteSubnet4Set(config.Hostname.ValueString(), []kea.NewRemoteSubnet4{newSubnet})
 	if err != nil {
 		resp.Diagnostics.AddError(
@@ -253,6 +255,7 @@ func (r *remoteSubnet4Resource) Read(ctx context.Context, req resource.ReadReque
 		return
 	}
 
+	// nolint: contextcheck
 	respData, err := r.client.RemoteSubnet4GetByPrefix(config.Hostname.ValueString(), config.Subnet.ValueString())
 	if err != nil {
 		// Only return an error if the error is NOT subnet not found.
@@ -341,6 +344,7 @@ func (r *remoteSubnet4Resource) Update(ctx context.Context, req resource.UpdateR
 		return
 	}
 
+	// nolint: contextcheck
 	respData, err := r.client.RemoteSubnet4Set(
 		config.Hostname.ValueString(),
 		[]kea.NewRemoteSubnet4{
@@ -427,6 +431,7 @@ func (r *remoteSubnet4Resource) Delete(ctx context.Context, req resource.DeleteR
 		return
 	}
 
+	// nolint: contextcheck
 	if _, err := r.client.RemoteSubnet4DelByPrefix(config.Hostname.ValueString(), config.Subnet.ValueString()); err != nil {
 		resp.Diagnostics.AddError(
 			"RemoteSubnet4DelByPrefix",

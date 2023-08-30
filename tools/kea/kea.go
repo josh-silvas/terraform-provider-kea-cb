@@ -126,13 +126,16 @@ func checkResponse(resp *http.Response) (*Response, error) {
 	if err := json.NewDecoder(resp.Body).Decode(&e); err != nil {
 		return nil, fmt.Errorf("checkResponse.json.Unmarshal(%w)", err)
 	}
+	// nolint: gosec
 	if len(e) == 0 {
 		return nil, fmt.Errorf("checkResponse(Unable to find response in %v)", e)
 	}
+	// nolint: gosec
 	if e[0].Result == 0 {
 		return &e[0], nil
 	}
 
+	// nolint: gosec
 	return nil, fmt.Errorf("result:%d(%s)", e[0].Result, e[0].Text)
 }
 
@@ -161,7 +164,7 @@ func (c *Client) do(req *http.Request, v interface{}) (*Response, error) {
 		if resp != nil {
 			defer func(b io.ReadCloser) {
 				if e := b.Close(); e != nil {
-					err = fmt.Errorf("%w:%s", err, e)
+					err = fmt.Errorf("%w:%s", err, e.Error())
 				}
 			}(resp.Body)
 		}

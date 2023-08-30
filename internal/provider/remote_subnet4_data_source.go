@@ -56,12 +56,12 @@ type (
 )
 
 // Metadata : Defines the data source metadata.
-func (d *remoteSubnet4DataSource) Metadata(ctx context.Context, req datasource.MetadataRequest, resp *datasource.MetadataResponse) {
+func (d *remoteSubnet4DataSource) Metadata(_ context.Context, req datasource.MetadataRequest, resp *datasource.MetadataResponse) {
 	resp.TypeName = req.ProviderTypeName + "_remote_subnet4_data_source"
 }
 
 // Schema : Defines the data source schema.
-func (d *remoteSubnet4DataSource) Schema(ctx context.Context, req datasource.SchemaRequest, resp *datasource.SchemaResponse) {
+func (d *remoteSubnet4DataSource) Schema(_ context.Context, _ datasource.SchemaRequest, resp *datasource.SchemaResponse) {
 	resp.Schema = schema.Schema{
 		// This description is used by the documentation generator and the language server.
 		MarkdownDescription: "Remote subnet4 data source",
@@ -99,7 +99,7 @@ func (d *remoteSubnet4DataSource) Schema(ctx context.Context, req datasource.Sch
 }
 
 // Configure : Configures the data source client.
-func (d *remoteSubnet4DataSource) Configure(ctx context.Context, req datasource.ConfigureRequest, resp *datasource.ConfigureResponse) {
+func (d *remoteSubnet4DataSource) Configure(_ context.Context, req datasource.ConfigureRequest, resp *datasource.ConfigureResponse) {
 	// Prevent panic if the provider has not been configured.
 	if req.ProviderData == nil {
 		return
@@ -150,6 +150,7 @@ func (d *remoteSubnet4DataSource) Read(ctx context.Context, req datasource.ReadR
 	var respData kea.RemoteSubnet4
 	var err error
 	if !config.Prefix.IsNull() {
+		// nolint: contextcheck
 		respData, err = d.client.RemoteSubnet4GetByPrefix(config.Hostname.ValueString(), config.Prefix.ValueString())
 		if err != nil {
 			// Only return an error if the error is NOT subnet not found.
@@ -162,6 +163,7 @@ func (d *remoteSubnet4DataSource) Read(ctx context.Context, req datasource.ReadR
 			}
 		}
 	} else {
+		// nolint: contextcheck
 		respData, err = d.client.RemoteSubnet4GetByID(config.Hostname.ValueString(), int(config.SubnetID.ValueInt64()))
 		if err != nil {
 			// Only return an error if the error is NOT subnet not found.
