@@ -6,6 +6,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/hashicorp/terraform-plugin-framework/attr"
 	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
@@ -34,12 +35,13 @@ type (
 
 	// remoteSubnet4ResourceSchema describes the resource data model.
 	remoteSubnet4ResourceSchema struct {
-		Hostname   types.String                       `tfsdk:"hostname"`
-		ID         types.Int64                        `tfsdk:"id"`
-		OptionData []remoteSubnet4OptionResourceModel `tfsdk:"option_data"`
-		Pools      []remoteSubnet4PoolResourceModel   `tfsdk:"pools"`
-		Relay      []remoteSubnet4RelayResourceModel  `tfsdk:"relay"`
-		Subnet     types.String                       `tfsdk:"subnet"`
+		Hostname    types.String                       `tfsdk:"hostname"`
+		ID          types.Int64                        `tfsdk:"id"`
+		OptionData  []remoteSubnet4OptionResourceModel `tfsdk:"option_data"`
+		Pools       []remoteSubnet4PoolResourceModel   `tfsdk:"pools"`
+		Relay       []remoteSubnet4RelayResourceModel  `tfsdk:"relay"`
+		Subnet      types.String                       `tfsdk:"subnet"`
+		UserContext types.Map                          `tfsdk:"user_context"`
 	}
 
 	// remoteSubnet4OptionResourceModel : Represents a single option-data entry in Kea.
@@ -108,9 +110,14 @@ func (r *remoteSubnet4Resource) Schema(_ context.Context, _ resource.SchemaReque
 						"code":        schema.Int64Attribute{Required: true},
 						"name":        schema.StringAttribute{Required: true},
 						"data":        schema.StringAttribute{Required: true},
-						"always_send": schema.BoolAttribute{Optional: true},
+						"always_send": schema.BoolAttribute{Required: true},
 					},
 				},
+			},
+			"user_context": schema.MapAttribute{
+				MarkdownDescription: "Arbitrary string data to tie to the subnet. e.g. `{site = \"AUS\", name = \"Austin, Tx\"}`",
+				ElementType:         types.StringType,
+				Optional:            true,
 			},
 		},
 	}
@@ -198,6 +205,13 @@ func (r *remoteSubnet4Resource) Create(ctx context.Context, req resource.CreateR
 			}
 			for _, ip := range config.Relay {
 				fr.IPAddresses = append(fr.IPAddresses, ip.IPAddress.ValueString())
+			}
+			return fr
+		}(),
+		UserContext: func() map[string]string {
+			fr := make(map[string]string)
+			for k, v := range config.UserContext.Elements() {
+				fr[k] = v.String()
 			}
 			return fr
 		}(),
@@ -307,6 +321,22 @@ func (r *remoteSubnet4Resource) Read(ctx context.Context, req resource.ReadReque
 		return fr
 	}()
 	config.Subnet = types.StringValue(respData.Subnet)
+	if respData.UserContext != nil {
+		config.UserContext = func() types.Map {
+			fr := make(map[string]attr.Value)
+			for k, v := range respData.UserContext {
+				fr[k] = types.StringValue(fmt.Sprintf("%v", v))
+			}
+			mv, diags := types.MapValue(types.StringType, fr)
+			resp.Diagnostics.Append(diags...)
+			return mv
+		}()
+	}
+
+	// If there are any diagnostics errors, stop here.
+	if resp.Diagnostics.HasError() {
+		return
+	}
 
 	// Save updated data into Terraform state
 	resp.Diagnostics.Append(resp.State.Set(ctx, &config)...)
@@ -380,6 +410,12 @@ func (r *remoteSubnet4Resource) Update(ctx context.Context, req resource.UpdateR
 						fr.IPAddresses = append(fr.IPAddresses, ip.IPAddress.ValueString())
 					}
 					return fr
+				}(),
+				UserContext: func() map[string]string {
+					elements := make(map[string]string, len(config.UserContext.Elements()))
+					diags := config.UserContext.ElementsAs(ctx, &elements, false)
+					resp.Diagnostics.Append(diags...)
+					return elements
 				}(),
 			},
 		},

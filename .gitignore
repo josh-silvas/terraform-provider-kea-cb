@@ -1,6 +1,6 @@
 *.dll
 *.exe
-.DS_Store
+*/**/.DS_Store
 example.tf
 terraform.tfplan
 terraform.tfstate
@@ -8,11 +8,6 @@ bin/
 dist/
 modules-dev/
 /pkg/
-website/.vagrant
-website/.bundle
-website/build
-website/node_modules
-.vagrant/
 *.backup
 ./*.tfstate
 .terraform/
@@ -23,12 +18,12 @@ website/node_modules
 .idea
 *.iml
 *.test
-*.iml
 
-examples/**/terraform.tfstate
-examples/**/terraform.tfstate.backup
-examples/**/.terraform
-examples/provider-install-verification/*
+# Ignore all .tfstate files
+*/**/.terraform.lock.hcl
+*/**/terraform.tfstate
+*/**/terraform.tfstate.backdup
+*/**/.terraform
 
 # Ignore binary files
 develop/terraform-provider-kea

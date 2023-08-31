@@ -36,14 +36,15 @@ type (
 	// remoteSubnet4DataSourceSchema describes the data source data model.
 	// Maps to the source schema data.
 	remoteSubnet4DataSourceSchema struct {
-		Prefix     types.String                         `tfsdk:"prefix"`
-		SubnetID   types.Int64                          `tfsdk:"subnet_id"`
-		Hostname   types.String                         `tfsdk:"hostname"`
-		ID         types.Int64                          `tfsdk:"id"`
-		OptionData []remoteSubnet4DataSourceOptionModel `tfsdk:"option_data"`
-		Pools      types.List                           `tfsdk:"pools"`
-		Relay      types.List                           `tfsdk:"relay"`
-		Subnet     types.String                         `tfsdk:"subnet"`
+		Prefix      types.String                         `tfsdk:"prefix"`
+		SubnetID    types.Int64                          `tfsdk:"subnet_id"`
+		Hostname    types.String                         `tfsdk:"hostname"`
+		ID          types.Int64                          `tfsdk:"id"`
+		OptionData  []remoteSubnet4DataSourceOptionModel `tfsdk:"option_data"`
+		Pools       types.List                           `tfsdk:"pools"`
+		Relay       types.List                           `tfsdk:"relay"`
+		Subnet      types.String                         `tfsdk:"subnet"`
+		UserContext types.Map                            `tfsdk:"user_context"`
 	}
 
 	// optionDataModel : Represents a single option-data entry in Kea.
@@ -93,6 +94,11 @@ func (d *remoteSubnet4DataSource) Schema(_ context.Context, _ datasource.SchemaR
 						"always_send": schema.BoolAttribute{Computed: true},
 					},
 				},
+			},
+			"user_context": schema.MapAttribute{
+				MarkdownDescription: "Arbitrary string data to tie to the subnet. e.g. `{site = \"AUS\", name = \"Austin, Tx\"}`",
+				ElementType:         types.StringType,
+				Optional:            true,
 			},
 		},
 	}
@@ -221,6 +227,22 @@ func (d *remoteSubnet4DataSource) Read(ctx context.Context, req datasource.ReadR
 		return retVal
 	}()
 	config.Subnet = types.StringValue(respData.Subnet)
+	if respData.UserContext != nil {
+		config.UserContext = func() types.Map {
+			fr := make(map[string]attr.Value)
+			for k, v := range respData.UserContext {
+				fr[k] = types.StringValue(fmt.Sprintf("%v", v))
+			}
+			mv, diags := types.MapValue(types.StringType, fr)
+			resp.Diagnostics.Append(diags...)
+			return mv
+		}()
+	}
+
+	// If there are any diagnostics errors, stop here.
+	if resp.Diagnostics.HasError() {
+		return
+	}
 
 	// Write logs using the tflog package
 	// Documentation: https://terraform.io/plugin/log

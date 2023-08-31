@@ -70,9 +70,9 @@ testacc: .env ## Run acceptance tests on all sub-packages within docker
 # BUILD: Build the provider
 # -------------------------------------------------------------------------------------------
 build: ## Build the provider for local development
-	@echo "Building the provider..."
+	@echo "🛠️ Building the provider..."
 	@go build -o develop/terraform-provider-kea
-	@echo "Completed building the provider."
+	@echo "🏁 Complete! Binary is located in develop/terraform-provider-kea."
 .PHONY: build
 
 terraform-plan: ## Run terraform plan to test the provider
