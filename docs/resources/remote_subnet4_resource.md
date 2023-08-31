@@ -27,6 +27,9 @@ resource "kea_remote_subnet4_resource" "example" {
     { code = 15, name = "domain-name", data = "example.com" },
     { code = 6, name = "domain-name-servers", data = "4.2.2.2, 8.8.8.8", always_send = true },
   ]
+  user_context = {
+    "foo" = "bar"
+  }
 }
 ```
 
@@ -43,6 +46,7 @@ resource "kea_remote_subnet4_resource" "example" {
 
 - `option_data` (Attributes List) List of option-data to configure on the pool. e.g. `[{code = 6, name = "domain-name-servers", data = "8.8.8.8, 4.2.2.2"}]` (see [below for nested schema](#nestedatt--option_data))
 - `relay` (Attributes List) List of relay IPs to configure in Kea. e.g. `['192.168.230.1']` (see [below for nested schema](#nestedatt--relay))
+- `user_context` (Map of String) Arbitrary string data to tie to the subnet. e.g. `{site = "AUS", name = "Austin, Tx"}`
 
 ### Read-Only
 
@@ -61,13 +65,10 @@ Required:
 
 Required:
 
+- `always_send` (Boolean)
 - `code` (Number)
 - `data` (String)
 - `name` (String)
-
-Optional:
-
-- `always_send` (Boolean)
 
 
 <a id="nestedatt--relay"></a>

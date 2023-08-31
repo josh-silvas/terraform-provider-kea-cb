@@ -12,4 +12,7 @@ resource "kea_remote_subnet4_resource" "example" {
     { code = 15, name = "domain-name", data = "example.com" },
     { code = 6, name = "domain-name-servers", data = "4.2.2.2, 8.8.8.8", always_send = true },
   ]
+  user_context = {
+    "foo" = "bar"
+  }
 }

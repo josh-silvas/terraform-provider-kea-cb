@@ -30,6 +30,7 @@ data "kea_remote_subnet4_data_source" "example" {
 
 - `prefix` (String) Prefix to fetch from Kea configuration-backend. e.g. 192.168.230.0/24`
 - `subnet_id` (Number) Subnet4 ID to fetch from Kea configuration-backend. e.g. 1921682300`
+- `user_context` (Map of String) Arbitrary string data to tie to the subnet. e.g. `{site = "AUS", name = "Austin, Tx"}`
 
 ### Read-Only
 
