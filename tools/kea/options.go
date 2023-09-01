@@ -104,7 +104,7 @@ func (c *Client) processOptions(opts ...Option) {
 		}
 	}
 	if c.auth.username == "" || c.auth.password == "" {
-		logrus.Fatalf("Missing auth! Use versa.WithAuth() or environment vars %s/%s", envKEAUSER, envKEAPASS)
+		logrus.Fatalf("Missing auth! Use kea.WithAuth() or environment vars %s/%s", envKEAUSER, envKEAPASS)
 	}
 
 	c.log = func() *logrus.Logger {

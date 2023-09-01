@@ -109,7 +109,7 @@ func (p *KeaCBProvider) Configure(ctx context.Context, req provider.ConfigureReq
 	}
 
 	// Create the Kea DHCP API client.
-	client := kea.New()
+	client := kea.New(kea.WithAuth(username, password))
 
 	// Make the Kea DHCP client available during DataSource and Resource
 	// type Configure methods.
