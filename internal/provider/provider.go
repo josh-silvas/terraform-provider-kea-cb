@@ -121,6 +121,8 @@ func (p *KeaCBProvider) Configure(ctx context.Context, req provider.ConfigureReq
 func (p *KeaCBProvider) Resources(_ context.Context) []func() resource.Resource {
 	return []func() resource.Resource{
 		NewRemoteSubnet4Resource,
+		NewRemoteOptionDef4Resource,
+		NewReservationResource,
 	}
 }
 
@@ -128,6 +130,8 @@ func (p *KeaCBProvider) Resources(_ context.Context) []func() resource.Resource 
 func (p *KeaCBProvider) DataSources(_ context.Context) []func() datasource.DataSource {
 	return []func() datasource.DataSource{
 		NewRemoteSubnet4DataSource,
+		NewRemoteOptionDef4DataSource,
+		NewReservationDataSource,
 	}
 }
 

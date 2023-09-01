@@ -3,6 +3,7 @@ package kea
 import (
 	"net"
 	"net/http"
+	"strings"
 )
 
 type (
@@ -45,6 +46,34 @@ func (c *Client) ReservationGetAll(hostname string, subnetID int) ([]Reservation
 	return ret.Hosts, nil
 }
 
+// ReservationGet : Gets a single reservation for the subnet4 list.
+func (c *Client) ReservationGet(hostname, ipOrMac string, subnetID int) (*Reservation, error) {
+	payload := Request{
+		Command:   "reservation-get",
+		Service:   []string{"dhcp4"},
+		Arguments: map[string]any{"subnet-id": subnetID},
+	}
+	if ip := net.ParseIP(ipOrMac); ip != nil {
+		payload.Arguments["ip-address"] = ip.String()
+	} else if mac, err := net.ParseMAC(ipOrMac); err == nil {
+		payload.Arguments["identifier-type"] = "hw-address"
+		payload.Arguments["identifier"] = mac.String()
+	}
+
+	req, err := c.make(http.MethodPost, hostname, payload, nil)
+	if err != nil {
+		return nil, err
+	}
+	ret := new(Reservation)
+	if _, err := c.do(req, ret); err != nil {
+		if strings.Contains(err.Error(), "not found") {
+			return nil, nil
+		}
+		return nil, err
+	}
+	return ret, nil
+}
+
 // ReservationAdd : Adds a reservation to the subnet4 list.
 func (c *Client) ReservationAdd(hostname string, res Reservation) error {
 	if net.ParseIP(res.IPAddress) == nil {
@@ -58,6 +87,40 @@ func (c *Client) ReservationAdd(hostname string, res Reservation) error {
 
 	payload := Request{
 		Command:   "reservation-add",
+		Service:   []string{"dhcp4"},
+		Arguments: map[string]any{"reservation": res},
+	}
+
+	req, err := c.make(http.MethodPost, hostname, payload, nil)
+	if err != nil {
+		return err
+	}
+
+	var ret struct {
+		Options []OptionReq `json:"options"`
+	}
+	if _, err := c.do(req, &ret); err != nil {
+		return err
+	}
+	return nil
+}
+
+// ReservationUpdate : Updates a reservation to the subnet4 list.
+func (c *Client) ReservationUpdate(hostname string, res Reservation) error {
+	if net.ParseIP(res.IPAddress) == nil {
+		return ErrInvalidIP
+	}
+	if val, err := net.ParseMAC(res.HwAddress); err == nil {
+		res.HwAddress = val.String()
+	} else {
+		return ErrInvalidMAC
+	}
+	if res.SubnetID == 0 {
+		return ErrInvalidSubnet
+	}
+
+	payload := Request{
+		Command:   "reservation-update",
 		Service:   []string{"dhcp4"},
 		Arguments: map[string]any{"reservation": res},
 	}

@@ -80,7 +80,7 @@ terraform-plan: ## Run terraform plan to test the provider
 .PHONY: terraform-plan
 
 terraform-apply: ## Run terraform apply to test the provider
-	@cd develop && terraform apply
+	@cd develop && terraform apply -auto-approve
 .PHONY: terraform-apply
 
 # -------------------------------------------------------------------------------------------
