@@ -210,7 +210,7 @@ github.com/hashicorp/terraform-plugin-log/internal/hclogutils
 github.com/hashicorp/terraform-plugin-log/internal/logging
 github.com/hashicorp/terraform-plugin-log/tflog
 github.com/hashicorp/terraform-plugin-log/tfsdklog
-# github.com/hashicorp/terraform-plugin-sdk/v2 v2.27.0
+# github.com/hashicorp/terraform-plugin-sdk/v2 v2.28.0
 ## explicit; go 1.19
 github.com/hashicorp/terraform-plugin-sdk/v2/diag
 github.com/hashicorp/terraform-plugin-sdk/v2/helper/logging
@@ -226,8 +226,9 @@ github.com/hashicorp/terraform-plugin-sdk/v2/internal/tfdiags
 github.com/hashicorp/terraform-plugin-sdk/v2/meta
 github.com/hashicorp/terraform-plugin-sdk/v2/plugin
 github.com/hashicorp/terraform-plugin-sdk/v2/terraform
-# github.com/hashicorp/terraform-plugin-testing v1.4.0
+# github.com/hashicorp/terraform-plugin-testing v1.5.1
 ## explicit; go 1.19
+github.com/hashicorp/terraform-plugin-testing/config
 github.com/hashicorp/terraform-plugin-testing/helper/resource
 github.com/hashicorp/terraform-plugin-testing/internal/addrs
 github.com/hashicorp/terraform-plugin-testing/internal/configs/configschema
@@ -235,6 +236,7 @@ github.com/hashicorp/terraform-plugin-testing/internal/configs/hcl2shim
 github.com/hashicorp/terraform-plugin-testing/internal/errorshim
 github.com/hashicorp/terraform-plugin-testing/internal/logging
 github.com/hashicorp/terraform-plugin-testing/internal/plugintest
+github.com/hashicorp/terraform-plugin-testing/internal/teststep
 github.com/hashicorp/terraform-plugin-testing/internal/tfdiags
 github.com/hashicorp/terraform-plugin-testing/plancheck
 github.com/hashicorp/terraform-plugin-testing/terraform
@@ -314,7 +316,7 @@ github.com/vmihailenco/msgpack/v5/msgpcode
 github.com/vmihailenco/tagparser/v2
 github.com/vmihailenco/tagparser/v2/internal
 github.com/vmihailenco/tagparser/v2/internal/parser
-# github.com/zclconf/go-cty v1.13.2
+# github.com/zclconf/go-cty v1.13.3
 ## explicit; go 1.18
 github.com/zclconf/go-cty/cty
 github.com/zclconf/go-cty/cty/convert
@@ -333,7 +335,7 @@ golang.org/x/crypto/hkdf
 golang.org/x/crypto/pbkdf2
 golang.org/x/crypto/scrypt
 golang.org/x/crypto/sha3
-# golang.org/x/exp v0.0.0-20230626212559-97b1e661b5df
+# golang.org/x/exp v0.0.0-20230809150735-7b3493d9a819
 ## explicit; go 1.20
 golang.org/x/exp/constraints
 golang.org/x/exp/slices
