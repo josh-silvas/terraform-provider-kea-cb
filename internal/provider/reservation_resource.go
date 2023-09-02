@@ -309,19 +309,28 @@ func (r *reservationResource) Read(ctx context.Context, req resource.ReadRequest
 
 	// Marshalling the response data taken from Kea, and write
 	// it into the TF Subnets model.
-	nextServer := ""
-	if respData.NextServer != "0.0.0.0" {
-		nextServer = respData.NextServer
-	}
 	config.ReservationHostname = types.StringValue(respData.Hostname)
-	config.BootFileName = types.StringValue(respData.BootFileName)
-	config.ClientID = types.StringValue(respData.ClientID)
-	config.CircuitID = types.StringValue(respData.CircuitID)
-	config.DuID = types.StringValue(respData.DuID)
-	config.FlexID = types.StringValue(respData.FlexID)
 	config.IPAddress = types.StringValue(respData.IPAddress)
 	config.HwAddress = types.StringValue(respData.HwAddress)
-	config.NextServer = types.StringValue(nextServer)
+
+	if respData.NextServer != "0.0.0.0" {
+		config.NextServer = types.StringValue(respData.NextServer)
+	}
+	if respData.BootFileName != "" {
+		config.BootFileName = types.StringValue(respData.BootFileName)
+	}
+	if respData.ClientID != "" {
+		config.ClientID = types.StringValue(respData.ClientID)
+	}
+	if respData.CircuitID != "" {
+		config.CircuitID = types.StringValue(respData.CircuitID)
+	}
+	if respData.DuID != "" {
+		config.DuID = types.StringValue(respData.DuID)
+	}
+	if respData.FlexID != "" {
+		config.FlexID = types.StringValue(respData.FlexID)
+	}
 
 	config.OptionData = func() []reservationOptionResourceModel {
 		r := make([]reservationOptionResourceModel, 0)
