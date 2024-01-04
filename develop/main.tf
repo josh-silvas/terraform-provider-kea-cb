@@ -21,22 +21,31 @@ provider "kea" {
 
 data "kea_remote_subnet4_data_source" "example" {
   hostname = local.hostname
-  prefix   = "192.168.230.0/24"
+  prefix   = "192.168.168.0/24"
 }
 
 
-resource "kea_remote_subnet4_resource" "example_resource" {
+resource "kea_remote_subnet4_resource" "example_subnet4_resource" {
     hostname    = local.hostname
-    subnet      = "192.168.225.0/24"
+    subnet      = "192.168.168.0/24"
     pools       = [
-      {pool = "192.168.225.50-192.168.225.150"}
+      {pool = "192.168.168.50-192.168.168.150"}
     ]
     relay       = [
-      {ip_address = "192.168.225.1"}
+      {ip_address = "192.168.168.1"}
     ]
     option_data = [
-      {code = 3,   name = "routers",             data = "192.168.225.1"},
-      {code = 15,  name = "domain-name",         data = "example.com"},
+      {code = 3,   name = "routers",             data = "192.168.168.1", always_send = true},
+      {code = 15,  name = "domain-name",         data = "example.com", always_send = true},
       {code = 6,   name = "domain-name-servers", data = "4.2.2.2, 8.8.8.8", always_send = true},
     ]
+}
+
+resource "kea_reservation_resource" "example_reservation_resource" {
+  hostname             = local.hostname
+  reservation_hostname = "example-server"
+  ip_address           = "192.168.168.160"
+  subnet_id            = kea_remote_subnet4_resource.example_subnet4_resource.id
+  hw_address           = "b8:27:eb:9c:ae:b7"
+  option_data          = []
 }

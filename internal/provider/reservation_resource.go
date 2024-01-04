@@ -9,6 +9,8 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
+	"github.com/hashicorp/terraform-plugin-framework/resource/schema/planmodifier"
+	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 	"github.com/hashicorp/terraform-plugin-log/tflog"
 	"github.com/josh-silvas/terraform-provider-kea/tools/kea"
@@ -88,6 +90,9 @@ func (r *reservationResource) Schema(_ context.Context, _ resource.SchemaRequest
 			"hw_address": schema.StringAttribute{
 				MarkdownDescription: "Hw-address/MAC address for this reservation.",
 				Required:            true,
+				PlanModifiers: []planmodifier.String{
+					stringplanmodifier.RequiresReplace(),
+				},
 			},
 			"boot_file_name": schema.StringAttribute{
 				MarkdownDescription: "Boot-file-name for this reservation.",
