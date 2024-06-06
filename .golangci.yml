@@ -2,21 +2,15 @@
 run:
   concurrency: 4
   timeout: "5m"
-  issues-exit-code: "1"
+  issues-exit-code: 1
   tests: true
-  skip-dirs:
-    - "Formula"
-    - "build"
-    - ".idea"
-  skip-dirs-use-default: true
-  skip-files:
-    - ".*\\.my\\.go$"
   allow-parallel-runners: false
 
 
 # output configuration options
 output:
-  format: "colored-line-number"
+  formats:
+    - format: "colored-line-number"
   print-issued-lines: true
   print-linter-name: true
   uniq-by-line: true
@@ -80,19 +74,6 @@ linters-settings:
   gofmt:
     # simplify code: gofmt with `-s` option, true by default
     simplify: true
-  golint:
-    min-confidence: 0
-  gomnd:
-    settings:
-      mnd:
-        # the list of enabled checks, see https://github.com/tommy-muehle/go-mnd/#checks for description.
-        checks:
-          - "argument"
-          - "case"
-          - "condition"
-          - "operation"
-          - "return"
-          - "assign"
   govet:
     # report about shadowed variables
     check-shadowing: false
@@ -114,22 +95,22 @@ linters-settings:
       - "shadow"
     disable-all: false
   depguard:
-    list-type: "blacklist"
-    include-go-root: false
-    packages:
-      - "github.com/sirupsen/logrus"
-    packages-with-error-message:
-      # specify an error message to output when a blacklisted package is used
-      - github.com/sirupsen/logrus: "logging is allowed only by logutils.Log"
+    rules:
+      logrus:
+        # package name
+        files:
+          - "github.com/sirupsen/logrus"
+        # list of allowed functions
+        deny:
+          - pkg: "logrus.New"
+          - pkg: "logrus.WithField"
+          - pkg: "logrus.WithFields"
   lll:
     # max line length, lines longer will be reported. Default is 120.
     # '\t' is counted as 1 character by default, and can be changed with the tab-width option
     line-length: 120
     # tab width in spaces. Default to 1.
     tab-width: 1
-  maligned:
-    # print struct with more effective memory layout or not, false by default
-    suggest-new: true
   misspell:
     # Correct spellings using locale preferences for US or UK.
     # Default is to use a neutral variety of English.
@@ -141,8 +122,6 @@ linters-settings:
   nolintlint:
     # Enable to ensure that nolint directives are all used. Default is true.
     allow-unused: false
-    # Disable to ensure that nolint directives don't have a leading space. Default is true.
-    allow-leading-space: true
     # Exclude following linters from requiring an explanation.  Default is [].
     allow-no-explanation: []
     # Enable to require an explanation of nonzero length after each nolint directive. Default is false.
@@ -174,6 +153,12 @@ issues:
   exclude-use-default: false
   exclude:
     - ".*Close|.*Flush|.*printf?|should have a package comment"
+  exclude-dirs:
+    - "Formula"
+    - "build"
+    - ".idea"
+  exclude-files:
+    - ".*\\.my\\.go$"
   exclude-rules:
     - linters:
         - "staticcheck"
@@ -181,19 +166,16 @@ issues:
 
 linters:
   enable:
-    - "megacheck"
+    - "gosimple"
+    - "staticcheck"
+    - "unused"
     - "govet"
     # The linter 'golint' is deprecated (since v1.41.0) due to:
     # The repository of the linter has been archived by the owner.  Replaced by revive.
     - "revive"
     - "unused"
   disable:
-    - "maligned"
     - "prealloc"
-    - "scopelint"
-    - "deadcode"
-    - "structcheck"
-    - "varcheck"
     - "rowserrcheck"
     - "sqlclosecheck"
   disable-all: false

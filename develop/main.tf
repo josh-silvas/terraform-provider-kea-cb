@@ -39,6 +39,25 @@ resource "kea_remote_subnet4_resource" "example_subnet4_resource" {
       {code = 15,  name = "domain-name",         data = "example.com", always_send = true},
       {code = 6,   name = "domain-name-servers", data = "4.2.2.2, 8.8.8.8", always_send = true},
     ]
+    next_server = "10.10.10.10"
+    server_hostname = "example-server"
+    boot_file_name = "example-boot-file"
+}
+
+resource "kea_remote_subnet4_resource" "example_subnet4_resource_2" {
+  hostname    = local.hostname
+  subnet      = "192.168.100.0/24"
+  pools       = [
+    {pool = "192.168.100.50-192.168.100.150"}
+  ]
+  relay       = [
+    {ip_address = "192.168.100.1"}
+  ]
+  option_data = [
+    {code = 3,   name = "routers",             data = "192.168.100.1", always_send = true},
+    {code = 15,  name = "domain-name",         data = "example.com", always_send = true},
+    {code = 6,   name = "domain-name-servers", data = "4.2.2.2, 8.8.8.8", always_send = true},
+  ]
 }
 
 resource "kea_reservation_resource" "example_reservation_resource" {

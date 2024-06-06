@@ -44,8 +44,11 @@ resource "kea_remote_subnet4_resource" "example" {
 
 ### Optional
 
+- `boot_file_name` (String) Optional conveys the boot configuration file, can be up to 128 bytes long, and is sent using the `file` field.
+- `next_server` (String) Optional TFTP boot server IP address, packets sent in the `siaddr` field.
 - `option_data` (Attributes List) List of option-data to configure on the pool. e.g. `[{code = 6, name = "domain-name-servers", data = "8.8.8.8, 4.2.2.2"}]` (see [below for nested schema](#nestedatt--option_data))
 - `relay` (Attributes List) List of relay IPs to configure in Kea. e.g. `['192.168.230.1']` (see [below for nested schema](#nestedatt--relay))
+- `server_hostname` (String) Optional, conveys a server hostname, can be up to 64 bytes long, and is in the `sname` field.
 - `user_context` (Map of String) Arbitrary string data to tie to the subnet. e.g. `{site = "AUS", name = "Austin, Tx"}`
 
 ### Read-Only

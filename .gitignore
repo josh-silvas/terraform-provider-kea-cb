@@ -1,37 +1,9 @@
-*.dll
-*.exe
 */**/.DS_Store
-example.tf
-terraform.tfplan
-terraform.tfstate
-bin/
-dist/
-modules-dev/
-/pkg/
-*.backup
-./*.tfstate
-.terraform/
-*.log
-*.bak
-*~
-.*.swp
 .idea
-*.iml
-*.test
-
-# Ignore all .tfstate files
-*/**/.terraform.lock.hcl
-*/**/terraform.tfstate
-*/**/terraform.tfstate.backdup
-*/**/.terraform
 
 # Ignore binary files
 develop/terraform-provider-kea
+develop/terraform.tfstate.backup
+develop/terraform.tfstate
+develop/.terraform.lock.hcl
 develop/.env
-
-# Test exclusions
-!command/test-fixtures/**/*.tfstate
-!command/test-fixtures/**/.terraform/
-
-# Keep windows files with windows line endings
-*.winfile eol=crlf
