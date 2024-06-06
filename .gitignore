@@ -1,5 +1,3 @@
-*.dll
-*.exe
 */**/.DS_Store
 .idea
 
