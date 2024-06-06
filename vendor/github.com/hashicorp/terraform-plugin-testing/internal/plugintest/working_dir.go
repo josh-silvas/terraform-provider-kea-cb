@@ -222,13 +222,10 @@ func (wd *WorkingDir) planFilename() string {
 
 // CreatePlan runs "terraform plan" to create a saved plan file, which if successful
 // will then be used for the next call to Apply.
-func (wd *WorkingDir) CreatePlan(ctx context.Context, opts ...tfexec.PlanOption) error {
+func (wd *WorkingDir) CreatePlan(ctx context.Context) error {
 	logging.HelperResourceTrace(ctx, "Calling Terraform CLI plan command")
 
-	opts = append(opts, tfexec.Reattach(wd.reattachInfo))
-	opts = append(opts, tfexec.Out(PlanFileName))
-
-	hasChanges, err := wd.tf.Plan(context.Background(), opts...)
+	hasChanges, err := wd.tf.Plan(context.Background(), tfexec.Reattach(wd.reattachInfo), tfexec.Refresh(false), tfexec.Out(PlanFileName))
 
 	logging.HelperResourceTrace(ctx, "Called Terraform CLI plan command")
 
@@ -253,13 +250,42 @@ func (wd *WorkingDir) CreatePlan(ctx context.Context, opts ...tfexec.PlanOption)
 	return nil
 }
 
+// CreateDestroyPlan runs "terraform plan -destroy" to create a saved plan
+// file, which if successful will then be used for the next call to Apply.
+func (wd *WorkingDir) CreateDestroyPlan(ctx context.Context) error {
+	logging.HelperResourceTrace(ctx, "Calling Terraform CLI plan -destroy command")
+
+	hasChanges, err := wd.tf.Plan(context.Background(), tfexec.Reattach(wd.reattachInfo), tfexec.Refresh(false), tfexec.Out(PlanFileName), tfexec.Destroy(true))
+
+	logging.HelperResourceTrace(ctx, "Called Terraform CLI plan -destroy command")
+
+	if err != nil {
+		return err
+	}
+
+	if !hasChanges {
+		logging.HelperResourceTrace(ctx, "Created destroy plan with no changes")
+
+		return nil
+	}
+
+	stdout, err := wd.SavedPlanRawStdout(ctx)
+
+	if err != nil {
+		return fmt.Errorf("error retrieving formatted plan output: %w", err)
+	}
+
+	logging.HelperResourceTrace(ctx, "Created destroy plan with changes", map[string]any{logging.KeyTestTerraformPlan: stdout})
+
+	return nil
+}
+
 // Apply runs "terraform apply". If CreatePlan has previously completed
 // successfully and the saved plan has not been cleared in the meantime then
 // this will apply the saved plan. Otherwise, it will implicitly create a new
 // plan and apply it.
-func (wd *WorkingDir) Apply(ctx context.Context, opts ...tfexec.ApplyOption) error {
+func (wd *WorkingDir) Apply(ctx context.Context) error {
 	args := []tfexec.ApplyOption{tfexec.Reattach(wd.reattachInfo), tfexec.Refresh(false)}
-	args = append(args, opts...)
 	if wd.HasSavedPlan() {
 		args = append(args, tfexec.DirOrPlan(PlanFileName))
 	}
@@ -306,7 +332,7 @@ func (wd *WorkingDir) SavedPlan(ctx context.Context) (*tfjson.Plan, error) {
 
 	logging.HelperResourceTrace(ctx, "Calling Terraform CLI show command for JSON plan")
 
-	plan, err := wd.tf.ShowPlanFile(context.Background(), wd.planFilename(), tfexec.Reattach(wd.reattachInfo), tfexec.JSONNumber(true))
+	plan, err := wd.tf.ShowPlanFile(context.Background(), wd.planFilename(), tfexec.Reattach(wd.reattachInfo))
 
 	logging.HelperResourceTrace(ctx, "Calling Terraform CLI show command for JSON plan")
 

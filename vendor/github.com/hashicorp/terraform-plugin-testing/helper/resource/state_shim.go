@@ -62,45 +62,27 @@ func shimOutputState(so *tfjson.StateOutput) (*terraform.OutputState, error) {
 			os.Value = v
 			return os, nil
 		}
-
 		switch firstElem := v[0].(type) {
 		case string:
 			elements := make([]interface{}, len(v))
 			for i, el := range v {
-				strElement, ok := el.(string)
-				// If the type of the element doesn't match the first elem, it's a tuple, return the original value
-				if !ok {
-					os.Value = v
-					return os, nil
-				}
-				elements[i] = strElement
+				//nolint:forcetypeassert // Guaranteed by type switch
+				elements[i] = el.(string)
 			}
 			os.Value = elements
 		case bool:
 			elements := make([]interface{}, len(v))
 			for i, el := range v {
-				boolElement, ok := el.(bool)
-				// If the type of the element doesn't match the first elem, it's a tuple, return the original value
-				if !ok {
-					os.Value = v
-					return os, nil
-				}
-
-				elements[i] = boolElement
+				//nolint:forcetypeassert // Guaranteed by type switch
+				elements[i] = el.(bool)
 			}
 			os.Value = elements
 		// unmarshalled number from JSON will always be json.Number
 		case json.Number:
 			elements := make([]interface{}, len(v))
 			for i, el := range v {
-				numberElement, ok := el.(json.Number)
-				// If the type of the element doesn't match the first elem, it's a tuple, return the original value
-				if !ok {
-					os.Value = v
-					return os, nil
-				}
-
-				elements[i] = numberElement
+				//nolint:forcetypeassert // Guaranteed by type switch
+				elements[i] = el.(json.Number)
 			}
 			os.Value = elements
 		case []interface{}:

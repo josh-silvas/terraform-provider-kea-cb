@@ -76,11 +76,7 @@ func detachSign(w io.Writer, signer *Entity, message io.Reader, sigType packet.S
 
 	sig := createSignaturePacket(signingKey.PublicKey, sigType, config)
 
-	h, err := sig.PrepareSign(config)
-	if err != nil {
-		return
-	}
-	wrappedHash, err := wrapHashForSignature(h, sig.SigType)
+	h, wrappedHash, err := hashForSignature(sig.Hash, sig.SigType)
 	if err != nil {
 		return
 	}
@@ -127,7 +123,7 @@ func SymmetricallyEncrypt(ciphertext io.Writer, passphrase []byte, hints *FileHi
 	var w io.WriteCloser
 	cipherSuite := packet.CipherSuite{
 		Cipher: config.Cipher(),
-		Mode:   config.AEAD().Mode(),
+		Mode: config.AEAD().Mode(),
 	}
 	w, err = packet.SerializeSymmetricallyEncrypted(ciphertext, config.Cipher(), config.AEAD() != nil, cipherSuite, key, config)
 	if err != nil {
@@ -279,27 +275,13 @@ func writeAndSign(payload io.WriteCloser, candidateHashes []uint8, signed *Entit
 		return nil, errors.InvalidArgumentError("cannot encrypt because no candidate hash functions are compiled in. (Wanted " + name + " in this case.)")
 	}
 
-	var salt []byte
 	if signer != nil {
-		var opsVersion = 3
-		if signer.Version == 6 {
-			opsVersion = signer.Version
-		}
 		ops := &packet.OnePassSignature{
-			Version:    opsVersion,
 			SigType:    sigType,
 			Hash:       hash,
 			PubKeyAlgo: signer.PubKeyAlgo,
 			KeyId:      signer.KeyId,
 			IsLast:     true,
-		}
-		if opsVersion == 6 {
-			ops.KeyFingerprint = signer.Fingerprint
-			salt, err = packet.SignatureSaltForHash(hash, config.Random())
-			if err != nil {
-				return nil, err
-			}
-			ops.Salt = salt
 		}
 		if err := ops.Serialize(payload); err != nil {
 			return nil, err
@@ -328,19 +310,19 @@ func writeAndSign(payload io.WriteCloser, candidateHashes []uint8, signed *Entit
 	}
 
 	if signer != nil {
-		h, wrappedHash, err := hashForSignature(hash, sigType, salt)
+		h, wrappedHash, err := hashForSignature(hash, sigType)
 		if err != nil {
 			return nil, err
 		}
 		metadata := &packet.LiteralData{
-			Format:   'u',
+			Format:   't',
 			FileName: hints.FileName,
 			Time:     epochSeconds,
 		}
 		if hints.IsBinary {
 			metadata.Format = 'b'
 		}
-		return signatureWriter{payload, literalData, hash, wrappedHash, h, salt, signer, sigType, config, metadata}, nil
+		return signatureWriter{payload, literalData, hash, wrappedHash, h, signer, sigType, config, metadata}, nil
 	}
 	return literalData, nil
 }
@@ -398,19 +380,15 @@ func encrypt(keyWriter io.Writer, dataWriter io.Writer, to []*Entity, signed *En
 			return nil, errors.InvalidArgumentError("cannot encrypt a message to key id " + strconv.FormatUint(to[i].PrimaryKey.KeyId, 16) + " because it has no valid encryption keys")
 		}
 
-		primarySelfSignature, _ := to[i].PrimarySelfSignature()
-		if primarySelfSignature == nil {
-			return nil, errors.InvalidArgumentError("entity without a self-signature")
-		}
-
-		if !primarySelfSignature.SEIPDv2 {
+		sig := to[i].PrimaryIdentity().SelfSignature
+		if sig.SEIPDv2 == false {
 			aeadSupported = false
 		}
 
-		candidateCiphers = intersectPreferences(candidateCiphers, primarySelfSignature.PreferredSymmetric)
-		candidateHashes = intersectPreferences(candidateHashes, primarySelfSignature.PreferredHash)
-		candidateCipherSuites = intersectCipherSuites(candidateCipherSuites, primarySelfSignature.PreferredCipherSuites)
-		candidateCompression = intersectPreferences(candidateCompression, primarySelfSignature.PreferredCompression)
+		candidateCiphers = intersectPreferences(candidateCiphers, sig.PreferredSymmetric)
+		candidateHashes = intersectPreferences(candidateHashes, sig.PreferredHash)
+		candidateCipherSuites = intersectCipherSuites(candidateCipherSuites, sig.PreferredCipherSuites)
+		candidateCompression = intersectPreferences(candidateCompression, sig.PreferredCompression)
 	}
 
 	// In the event that the intersection of supported algorithms is empty we use the ones
@@ -431,7 +409,7 @@ func encrypt(keyWriter io.Writer, dataWriter io.Writer, to []*Entity, signed *En
 	cipher := packet.CipherFunction(candidateCiphers[0])
 	aeadCipherSuite := packet.CipherSuite{
 		Cipher: packet.CipherFunction(candidateCipherSuites[0][0]),
-		Mode:   packet.AEADMode(candidateCipherSuites[0][1]),
+		Mode: packet.AEADMode(candidateCipherSuites[0][1]),
 	}
 
 	// If the cipher specified by config is a candidate, we'll use that.
@@ -450,7 +428,7 @@ func encrypt(keyWriter io.Writer, dataWriter io.Writer, to []*Entity, signed *En
 	}
 
 	for _, key := range encryptKeys {
-		if err := packet.SerializeEncryptedKeyAEAD(keyWriter, key.PublicKey, cipher, aeadSupported, symKey, config); err != nil {
+		if err := packet.SerializeEncryptedKey(keyWriter, key.PublicKey, cipher, symKey, config); err != nil {
 			return nil, err
 		}
 	}
@@ -458,8 +436,8 @@ func encrypt(keyWriter io.Writer, dataWriter io.Writer, to []*Entity, signed *En
 	var payload io.WriteCloser
 	payload, err = packet.SerializeSymmetricallyEncrypted(dataWriter, cipher, aeadSupported, aeadCipherSuite, symKey, config)
 	if err != nil {
-		return
-	}
+			return
+		}
 
 	payload, err = handleCompression(payload, candidateCompression, config)
 	if err != nil {
@@ -487,17 +465,13 @@ func Sign(output io.Writer, signed *Entity, hints *FileHints, config *packet.Con
 		hashToHashId(crypto.SHA3_512),
 	}
 	defaultHashes := candidateHashes[0:1]
-	primarySelfSignature, _ := signed.PrimarySelfSignature()
-	if primarySelfSignature == nil {
-		return nil, errors.StructuralError("signed entity has no self-signature")
-	}
-	preferredHashes := primarySelfSignature.PreferredHash
+	preferredHashes := signed.PrimaryIdentity().SelfSignature.PreferredHash
 	if len(preferredHashes) == 0 {
 		preferredHashes = defaultHashes
 	}
 	candidateHashes = intersectPreferences(candidateHashes, preferredHashes)
 	if len(candidateHashes) == 0 {
-		return nil, errors.StructuralError("cannot sign because signing key shares no common algorithms with candidate hashes")
+		return nil, errors.InvalidArgumentError("cannot sign because signing key shares no common algorithms with candidate hashes")
 	}
 
 	return writeAndSign(noOpCloser{output}, candidateHashes, signed, hints, packet.SigTypeBinary, config)
@@ -512,7 +486,6 @@ type signatureWriter struct {
 	hashType      crypto.Hash
 	wrappedHash   hash.Hash
 	h             hash.Hash
-	salt          []byte // v6 only
 	signer        *packet.PrivateKey
 	sigType       packet.SignatureType
 	config        *packet.Config
@@ -535,10 +508,6 @@ func (s signatureWriter) Close() error {
 	sig := createSignaturePacket(&s.signer.PublicKey, s.sigType, s.config)
 	sig.Hash = s.hashType
 	sig.Metadata = s.metadata
-
-	if err := sig.SetSalt(s.salt); err != nil {
-		return err
-	}
 
 	if err := sig.Sign(s.h, s.signer, s.config); err != nil {
 		return err

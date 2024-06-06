@@ -1,6 +1,3 @@
-// Copyright (c) HashiCorp, Inc.
-// SPDX-License-Identifier: MPL-2.0
-
 package tfexec
 
 import (
@@ -169,7 +166,7 @@ func (tf *Terraform) buildEnv(mergeEnv map[string]string) []string {
 	env[automationEnvVar] = "1"
 
 	// force usage of workspace methods for switching
-	delete(env, workspaceEnvVar)
+	env[workspaceEnvVar] = ""
 
 	if tf.disablePluginTLS {
 		env[disablePluginTLSEnvVar] = "1"

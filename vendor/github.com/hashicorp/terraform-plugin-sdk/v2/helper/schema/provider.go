@@ -12,6 +12,8 @@ import (
 	"sort"
 	"strings"
 
+	"github.com/hashicorp/go-multierror"
+
 	"github.com/hashicorp/terraform-plugin-go/tfprotov5"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/internal/configs/configschema"
@@ -128,10 +130,10 @@ func (p *Provider) InternalValidate() error {
 		return errors.New("ConfigureFunc and ConfigureContextFunc must not both be set")
 	}
 
-	var validationErrors []error
+	var validationErrors error
 	sm := schemaMap(p.Schema)
 	if err := sm.InternalValidate(sm); err != nil {
-		validationErrors = append(validationErrors, err)
+		validationErrors = multierror.Append(validationErrors, err)
 	}
 
 	// Provider-specific checks
@@ -143,17 +145,17 @@ func (p *Provider) InternalValidate() error {
 
 	for k, r := range p.ResourcesMap {
 		if err := r.InternalValidate(nil, true); err != nil {
-			validationErrors = append(validationErrors, fmt.Errorf("resource %s: %s", k, err))
+			validationErrors = multierror.Append(validationErrors, fmt.Errorf("resource %s: %s", k, err))
 		}
 	}
 
 	for k, r := range p.DataSourcesMap {
 		if err := r.InternalValidate(nil, false); err != nil {
-			validationErrors = append(validationErrors, fmt.Errorf("data source %s: %s", k, err))
+			validationErrors = multierror.Append(validationErrors, fmt.Errorf("data source %s: %s", k, err))
 		}
 	}
 
-	return errors.Join(validationErrors...)
+	return validationErrors
 }
 
 func isReservedProviderFieldName(name string) bool {
@@ -282,14 +284,6 @@ func (p *Provider) Configure(ctx context.Context, c *terraform.ResourceConfig) d
 	data, err := sm.Data(nil, diff)
 	if err != nil {
 		return diag.FromErr(err)
-	}
-
-	// Modify the ResourceData to contain the original ResourceConfig to support
-	// GetOkExists() and GetRawConfig().
-	//
-	// Reference: https://github.com/hashicorp/terraform-plugin-sdk/issues/1270
-	if data != nil {
-		data.config = c
 	}
 
 	if p.ConfigureFunc != nil {
@@ -493,7 +487,6 @@ func (p *Provider) DataSources() []terraform.DataSource {
 // If TF_APPEND_USER_AGENT is set, its value will be appended to the returned
 // string.
 func (p *Provider) UserAgent(name, version string) string {
-	//nolint:staticcheck // best effort usage
 	ua := fmt.Sprintf("Terraform/%s (+https://www.terraform.io) Terraform-Plugin-SDK/%s", p.TerraformVersion, meta.SDKVersionString())
 	if name != "" {
 		ua += " " + name

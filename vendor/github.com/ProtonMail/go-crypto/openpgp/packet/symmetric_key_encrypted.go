@@ -41,11 +41,11 @@ func (ske *SymmetricKeyEncrypted) parse(r io.Reader) error {
 		return err
 	}
 	ske.Version = int(buf[0])
-	if ske.Version != 4 && ske.Version != 5 && ske.Version != 6 {
+	if ske.Version != 4 && ske.Version != 5 {
 		return errors.UnsupportedError("unknown SymmetricKeyEncrypted version")
 	}
 
-	if ske.Version > 5 {
+	if ske.Version == 5 {
 		// Scalar octet count
 		if _, err := readFull(r, buf[:]); err != nil {
 			return err
@@ -61,15 +61,13 @@ func (ske *SymmetricKeyEncrypted) parse(r io.Reader) error {
 		return errors.UnsupportedError("unknown cipher: " + strconv.Itoa(int(buf[0])))
 	}
 
-	if ske.Version >= 5 {
+	if ske.Version == 5 {
 		// AEAD mode
 		if _, err := readFull(r, buf[:]); err != nil {
 			return errors.StructuralError("cannot read AEAD octet from packet")
 		}
 		ske.Mode = AEADMode(buf[0])
-	}
 
-	if ske.Version > 5 {
 		// Scalar octet count
 		if _, err := readFull(r, buf[:]); err != nil {
 			return err
@@ -84,7 +82,7 @@ func (ske *SymmetricKeyEncrypted) parse(r io.Reader) error {
 		return err
 	}
 
-	if ske.Version >= 5 {
+	if ske.Version == 5 {
 		// AEAD IV
 		iv := make([]byte, ske.Mode.IvLength())
 		_, err := readFull(r, iv)
@@ -125,8 +123,8 @@ func (ske *SymmetricKeyEncrypted) Decrypt(passphrase []byte) ([]byte, CipherFunc
 	case 4:
 		plaintextKey, cipherFunc, err := ske.decryptV4(key)
 		return plaintextKey, cipherFunc, err
-	case 5, 6:
-		plaintextKey, err := ske.aeadDecrypt(ske.Version, key)
+	case 5:
+		plaintextKey, err := ske.decryptV5(key)
 		return plaintextKey, CipherFunction(0), err
 	}
 	err := errors.UnsupportedError("unknown SymmetricKeyEncrypted version")
@@ -152,9 +150,9 @@ func (ske *SymmetricKeyEncrypted) decryptV4(key []byte) ([]byte, CipherFunction,
 	return plaintextKey, cipherFunc, nil
 }
 
-func (ske *SymmetricKeyEncrypted) aeadDecrypt(version int, key []byte) ([]byte, error) {
-	adata := []byte{0xc3, byte(version), byte(ske.CipherFunc), byte(ske.Mode)}
-	aead := getEncryptedKeyAeadInstance(ske.CipherFunc, ske.Mode, key, adata, version)
+func (ske *SymmetricKeyEncrypted) decryptV5(key []byte) ([]byte, error) {
+	adata := []byte{0xc3, byte(5), byte(ske.CipherFunc), byte(ske.Mode)}
+	aead := getEncryptedKeyAeadInstance(ske.CipherFunc, ske.Mode, key, adata)
 
 	plaintextKey, err := aead.Open(nil, ske.iv, ske.encryptedKey, adata)
 	if err != nil {
@@ -194,13 +192,13 @@ func SerializeSymmetricKeyEncrypted(w io.Writer, passphrase []byte, config *Conf
 func SerializeSymmetricKeyEncryptedReuseKey(w io.Writer, sessionKey []byte, passphrase []byte, config *Config) (err error) {
 	var version int
 	if config.AEAD() != nil {
-		version = 6
+		version = 5
 	} else {
 		version = 4
 	}
 	cipherFunc := config.Cipher()
 	// cipherFunc must be AES
-	if !cipherFunc.IsSupported() || cipherFunc < CipherAES128 || cipherFunc > CipherAES256 {
+	if !cipherFunc.IsSupported() ||  cipherFunc < CipherAES128 || cipherFunc > CipherAES256 {
 		return errors.UnsupportedError("unsupported cipher: " + strconv.Itoa(int(cipherFunc)))
 	}
 
@@ -209,7 +207,7 @@ func SerializeSymmetricKeyEncryptedReuseKey(w io.Writer, sessionKey []byte, pass
 	keyEncryptingKey := make([]byte, keySize)
 	// s2k.Serialize salts and stretches the passphrase, and writes the
 	// resulting key to keyEncryptingKey and the s2k descriptor to s2kBuf.
-	err = s2k.Serialize(s2kBuf, keyEncryptingKey, config.Random(), passphrase, config.S2K())
+	err = s2k.Serialize(s2kBuf, keyEncryptingKey, config.Random(), passphrase, &s2k.Config{Hash: config.Hash(), S2KCount: config.PasswordHashIterations()})
 	if err != nil {
 		return
 	}
@@ -219,15 +217,11 @@ func SerializeSymmetricKeyEncryptedReuseKey(w io.Writer, sessionKey []byte, pass
 	switch version {
 	case 4:
 		packetLength = 2 /* header */ + len(s2kBytes) + 1 /* cipher type */ + keySize
-	case 5, 6:
+	case 5:
 		ivLen := config.AEAD().Mode().IvLength()
 		tagLen := config.AEAD().Mode().TagLength()
-		packetLength = 3 + len(s2kBytes) + ivLen + keySize + tagLen
+		packetLength = 5 + len(s2kBytes) + ivLen + keySize + tagLen
 	}
-	if version > 5 {
-		packetLength += 2 // additional octet count fields
-	}
-
 	err = serializeHeader(w, packetTypeSymmetricKeyEncrypted, packetLength)
 	if err != nil {
 		return
@@ -236,19 +230,18 @@ func SerializeSymmetricKeyEncryptedReuseKey(w io.Writer, sessionKey []byte, pass
 	// Symmetric Key Encrypted Version
 	buf := []byte{byte(version)}
 
-	if version > 5 {
+	if version == 5 {
 		// Scalar octet count
-		buf = append(buf, byte(3+len(s2kBytes)+config.AEAD().Mode().IvLength()))
+		buf = append(buf, byte(3 + len(s2kBytes) + config.AEAD().Mode().IvLength()))
 	}
 
 	// Cipher function
 	buf = append(buf, byte(cipherFunc))
 
-	if version >= 5 {
+	if version == 5 {
 		// AEAD mode
 		buf = append(buf, byte(config.AEAD().Mode()))
-	}
-	if version > 5 {
+
 		// Scalar octet count
 		buf = append(buf, byte(len(s2kBytes)))
 	}
@@ -272,10 +265,10 @@ func SerializeSymmetricKeyEncryptedReuseKey(w io.Writer, sessionKey []byte, pass
 		if err != nil {
 			return
 		}
-	case 5, 6:
+	case 5:
 		mode := config.AEAD().Mode()
-		adata := []byte{0xc3, byte(version), byte(cipherFunc), byte(mode)}
-		aead := getEncryptedKeyAeadInstance(cipherFunc, mode, keyEncryptingKey, adata, version)
+		adata := []byte{0xc3, byte(5), byte(cipherFunc), byte(mode)}
+		aead := getEncryptedKeyAeadInstance(cipherFunc, mode, keyEncryptingKey, adata)
 
 		// Sample iv using random reader
 		iv := make([]byte, config.AEAD().Mode().IvLength())
@@ -299,17 +292,12 @@ func SerializeSymmetricKeyEncryptedReuseKey(w io.Writer, sessionKey []byte, pass
 	return
 }
 
-func getEncryptedKeyAeadInstance(c CipherFunction, mode AEADMode, inputKey, associatedData []byte, version int) (aead cipher.AEAD) {
-	var blockCipher cipher.Block
-	if version > 5 {
-		hkdfReader := hkdf.New(sha256.New, inputKey, []byte{}, associatedData)
+func getEncryptedKeyAeadInstance(c CipherFunction, mode AEADMode, inputKey, associatedData []byte) (aead cipher.AEAD) {
+	hkdfReader := hkdf.New(sha256.New, inputKey, []byte{}, associatedData)
 
-		encryptionKey := make([]byte, c.KeySize())
-		_, _ = readFull(hkdfReader, encryptionKey)
+	encryptionKey := make([]byte, c.KeySize())
+	_, _ = readFull(hkdfReader, encryptionKey)
 
-		blockCipher = c.new(encryptionKey)
-	} else {
-		blockCipher = c.new(inputKey)
-	}
+	blockCipher := c.new(encryptionKey)
 	return mode.new(blockCipher)
 }

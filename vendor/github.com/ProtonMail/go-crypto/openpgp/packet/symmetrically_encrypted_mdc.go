@@ -221,7 +221,7 @@ func (c noOpCloser) Close() error {
 
 func serializeSymmetricallyEncryptedMdc(ciphertext io.WriteCloser, c CipherFunction, key []byte, config *Config) (Contents io.WriteCloser, err error) {
 	// Disallow old cipher suites
-	if !c.IsSupported() || c < CipherAES128 {
+	if !c.IsSupported() ||  c < CipherAES128 {
 		return nil, errors.InvalidArgumentError("invalid mdc cipher function")
 	}
 
@@ -237,10 +237,7 @@ func serializeSymmetricallyEncryptedMdc(ciphertext io.WriteCloser, c CipherFunct
 	block := c.new(key)
 	blockSize := block.BlockSize()
 	iv := make([]byte, blockSize)
-	_, err = io.ReadFull(config.Random(), iv)
-	if err != nil {
-		return nil, err
-	}
+	_, err = config.Random().Read(iv)
 	if err != nil {
 		return
 	}

@@ -134,23 +134,6 @@ func (cs Constraints) String() string {
 	return strings.Join(buf, " || ")
 }
 
-// UnmarshalText implements the encoding.TextUnmarshaler interface.
-func (cs *Constraints) UnmarshalText(text []byte) error {
-	temp, err := NewConstraint(string(text))
-	if err != nil {
-		return err
-	}
-
-	*cs = *temp
-
-	return nil
-}
-
-// MarshalText implements the encoding.TextMarshaler interface.
-func (cs Constraints) MarshalText() ([]byte, error) {
-	return []byte(cs.String()), nil
-}
-
 var constraintOps map[string]cfunc
 var constraintRegex *regexp.Regexp
 var constraintRangeRegex *regexp.Regexp
@@ -197,13 +180,8 @@ func init() {
 		ops,
 		cvRegex))
 
-	// The first time a constraint shows up will look slightly different from
-	// future times it shows up due to a leading space or comma in a given
-	// string.
 	validConstraintRegex = regexp.MustCompile(fmt.Sprintf(
-		`^(\s*(%s)\s*(%s)\s*)((?:\s+|,\s*)(%s)\s*(%s)\s*)*$`,
-		ops,
-		cvRegex,
+		`^(\s*(%s)\s*(%s)\s*\,?)+$`,
 		ops,
 		cvRegex))
 }
@@ -255,7 +233,7 @@ func parseConstraint(c string) (*constraint, error) {
 		patchDirty := false
 		dirty := false
 		if isX(m[3]) || m[3] == "" {
-			ver = fmt.Sprintf("0.0.0%s", m[6])
+			ver = "0.0.0"
 			dirty = true
 		} else if isX(strings.TrimPrefix(m[4], ".")) || m[4] == "" {
 			minorDirty = true
@@ -555,10 +533,6 @@ func constraintCaret(v *Version, c *constraint) (bool, error) {
 			return true, nil
 		}
 		return false, fmt.Errorf("%s does not have same minor version as %s. Expected minor versions to match when constraint major version is 0", v, c.orig)
-	}
-	// ^ when the minor is 0 and minor > 0 is =0.0.z
-	if c.con.Minor() == 0 && v.Minor() > 0 {
-		return false, fmt.Errorf("%s does not have same minor version as %s", v, c.orig)
 	}
 
 	// At this point the major is 0 and the minor is 0 and not dirty. The patch

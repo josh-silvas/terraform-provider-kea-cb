@@ -10,6 +10,8 @@ import (
 	"os"
 	"path/filepath"
 	"reflect"
+
+	"golang.org/x/exp/constraints"
 )
 
 const autoTFVarsJson = "terraform-plugin-testing.auto.tfvars.json"
@@ -79,7 +81,7 @@ func (v floatVariable) MarshalJSON() ([]byte, error) {
 }
 
 // FloatVariable returns floatVariable which implements Variable.
-func FloatVariable[T anyFloat](value T) floatVariable {
+func FloatVariable[T constraints.Float](value T) floatVariable {
 	return floatVariable{
 		value: value,
 	}
@@ -98,7 +100,7 @@ func (v integerVariable) MarshalJSON() ([]byte, error) {
 }
 
 // IntegerVariable returns integerVariable which implements Variable.
-func IntegerVariable[T anyInteger](value T) integerVariable {
+func IntegerVariable[T constraints.Integer](value T) integerVariable {
 	return integerVariable{
 		value: value,
 	}

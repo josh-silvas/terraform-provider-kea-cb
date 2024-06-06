@@ -7,7 +7,7 @@ import (
 	"bytes"
 	"fmt"
 
-	"github.com/apparentlymart/go-textseg/v15/textseg"
+	"github.com/apparentlymart/go-textseg/v13/textseg"
 	"github.com/hashicorp/hcl/v2"
 )
 
@@ -63,9 +63,8 @@ const (
 	TokenDot   TokenType = '.'
 	TokenComma TokenType = ','
 
-	TokenDoubleColon TokenType = '⸬'
-	TokenEllipsis    TokenType = '…'
-	TokenFatArrow    TokenType = '⇒'
+	TokenEllipsis TokenType = '…'
+	TokenFatArrow TokenType = '⇒'
 
 	TokenQuestion TokenType = '?'
 	TokenColon    TokenType = ':'

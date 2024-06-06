@@ -28,9 +28,6 @@ type ExactVersion struct {
 	InstallDir string
 	Timeout    time.Duration
 
-	// Enterprise indicates installation of enterprise version (leave nil for Community editions)
-	Enterprise *EnterpriseOptions
-
 	SkipChecksumVerification bool
 
 	// ArmoredPublicKey is a public PGP key in ASCII/armor format to use
@@ -70,10 +67,6 @@ func (ev *ExactVersion) Validate() error {
 		return fmt.Errorf("unknown version")
 	}
 
-	if err := validateEnterpriseOptions(ev.Enterprise); err != nil {
-		return err
-	}
-
 	return nil
 }
 
@@ -107,11 +100,7 @@ func (ev *ExactVersion) Install(ctx context.Context) (string, error) {
 		rels.BaseURL = ev.apiBaseURL
 	}
 	rels.SetLogger(ev.log())
-	installVersion := ev.Version
-	if ev.Enterprise != nil {
-		installVersion = versionWithMetadata(installVersion, enterpriseVersionMetadata(ev.Enterprise))
-	}
-	pv, err := rels.GetProductVersion(ctx, ev.Product.Name, installVersion)
+	pv, err := rels.GetProductVersion(ctx, ev.Product.Name, ev.Version)
 	if err != nil {
 		return "", err
 	}
@@ -129,11 +118,7 @@ func (ev *ExactVersion) Install(ctx context.Context) (string, error) {
 		d.BaseURL = ev.apiBaseURL
 	}
 
-	licenseDir := ""
-	if ev.Enterprise != nil {
-		licenseDir = ev.Enterprise.LicenseDir
-	}
-	zipFilePath, err := d.DownloadAndUnpack(ctx, pv, dstDir, licenseDir)
+	zipFilePath, err := d.DownloadAndUnpack(ctx, pv, dstDir)
 	if zipFilePath != "" {
 		ev.pathsToRemove = append(ev.pathsToRemove, zipFilePath)
 	}
@@ -165,22 +150,4 @@ func (ev *ExactVersion) Remove(ctx context.Context) error {
 	}
 
 	return nil
-}
-
-// versionWithMetadata returns a new version by combining the given version with the given metadata
-func versionWithMetadata(v *version.Version, metadata string) *version.Version {
-	if v == nil {
-		return nil
-	}
-
-	if metadata == "" {
-		return v
-	}
-
-	v2, err := version.NewVersion(fmt.Sprintf("%s+%s", v.Core(), metadata))
-	if err != nil {
-		return nil
-	}
-
-	return v2
 }

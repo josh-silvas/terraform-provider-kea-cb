@@ -5,7 +5,7 @@ package tfjsonpath
 
 // step represents a traversal type indicating the underlying Go type
 // representation for a Terraform JSON value.
-type step any
+type step interface{}
 
 // MapStep represents a traversal for map[string]any
 type MapStep string
