@@ -37,6 +37,9 @@ type (
 		OptionData        []OptionData      `json:"option-data"`
 		Relay             Relay             `json:"relay,omitempty"`
 		UserContext       map[string]string `json:"user-context,omitempty"`
+		NextServer        string            `json:"next-server,omitempty"`
+		ServerHostname    string            `json:"server-hostname,omitempty"`
+		BootFileName      string            `json:"boot-file-name,omitempty"`
 	}
 
 	// Relay : Represents a single relay entry in Kea.

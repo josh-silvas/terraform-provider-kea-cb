@@ -35,13 +35,16 @@ type (
 
 	// remoteSubnet4ResourceSchema describes the resource data model.
 	remoteSubnet4ResourceSchema struct {
-		Hostname    types.String                       `tfsdk:"hostname"`
-		ID          types.Int64                        `tfsdk:"id"`
-		OptionData  []remoteSubnet4OptionResourceModel `tfsdk:"option_data"`
-		Pools       []remoteSubnet4PoolResourceModel   `tfsdk:"pools"`
-		Relay       []remoteSubnet4RelayResourceModel  `tfsdk:"relay"`
-		Subnet      types.String                       `tfsdk:"subnet"`
-		UserContext types.Map                          `tfsdk:"user_context"`
+		Hostname       types.String                       `tfsdk:"hostname"`
+		ID             types.Int64                        `tfsdk:"id"`
+		OptionData     []remoteSubnet4OptionResourceModel `tfsdk:"option_data"`
+		Pools          []remoteSubnet4PoolResourceModel   `tfsdk:"pools"`
+		Relay          []remoteSubnet4RelayResourceModel  `tfsdk:"relay"`
+		Subnet         types.String                       `tfsdk:"subnet"`
+		NextServer     types.String                       `tfsdk:"next_server"`
+		ServerHostname types.String                       `tfsdk:"server_hostname"`
+		BootFileName   types.String                       `tfsdk:"boot_file_name"`
+		UserContext    types.Map                          `tfsdk:"user_context"`
 	}
 
 	// remoteSubnet4OptionResourceModel : Represents a single option-data entry in Kea.
@@ -117,6 +120,18 @@ func (r *remoteSubnet4Resource) Schema(_ context.Context, _ resource.SchemaReque
 			"user_context": schema.MapAttribute{
 				MarkdownDescription: "Arbitrary string data to tie to the subnet. e.g. `{site = \"AUS\", name = \"Austin, Tx\"}`",
 				ElementType:         types.StringType,
+				Optional:            true,
+			},
+			"next_server": schema.StringAttribute{
+				MarkdownDescription: "Optional TFTP boot server IP address, packets sent in the `siaddr` field.",
+				Optional:            true,
+			},
+			"server_hostname": schema.StringAttribute{
+				MarkdownDescription: "Optional, conveys a server hostname, can be up to 64 bytes long, and is in the `sname` field.",
+				Optional:            true,
+			},
+			"boot_file_name": schema.StringAttribute{
+				MarkdownDescription: "Optional conveys the boot configuration file, can be up to 128 bytes long, and is sent using the `file` field.",
 				Optional:            true,
 			},
 		},
@@ -215,6 +230,16 @@ func (r *remoteSubnet4Resource) Create(ctx context.Context, req resource.CreateR
 			}
 			return fr
 		}(),
+	}
+
+	if !config.NextServer.IsNull() && !config.NextServer.IsUnknown() && config.NextServer.ValueString() != "" {
+		newSubnet.NextServer = config.NextServer.ValueString()
+	}
+	if !config.ServerHostname.IsNull() && !config.ServerHostname.IsUnknown() && config.ServerHostname.ValueString() != "" {
+		newSubnet.ServerHostname = config.ServerHostname.ValueString()
+	}
+	if !config.BootFileName.IsNull() && !config.BootFileName.IsUnknown() && config.BootFileName.ValueString() != "" {
+		newSubnet.BootFileName = config.BootFileName.ValueString()
 	}
 
 	// nolint: contextcheck
@@ -373,53 +398,59 @@ func (r *remoteSubnet4Resource) Update(ctx context.Context, req resource.UpdateR
 		)
 		return
 	}
+	update := kea.NewRemoteSubnet4{
+		ID:     id,
+		Subnet: config.Subnet.ValueString(),
+		Pools: func() []kea.Pool {
+			fr := make([]kea.Pool, 0)
+			for _, p := range config.Pools {
+				fr = append(fr, kea.Pool{Pool: p.Pool.ValueString()})
+			}
+			return fr
+		}(),
+		OptionData: func() []kea.OptionData {
+			fr := make([]kea.OptionData, 0)
+			for _, o := range config.OptionData {
+				code := int(o.Code.ValueInt64())
+				fr = append(fr, kea.OptionData{
+					Code:       &code,
+					Name:       o.Name.ValueString(),
+					Data:       o.Data.ValueString(),
+					AlwaysSend: o.AlwaysSend.ValueBool(),
+				})
+			}
+			return fr
+		}(),
+		Relay: func() kea.Relay {
+			fr := kea.Relay{}
+			if len(config.Relay) == 0 {
+				return fr
+			}
+			for _, ip := range config.Relay {
+				fr.IPAddresses = append(fr.IPAddresses, ip.IPAddress.ValueString())
+			}
+			return fr
+		}(),
+		UserContext: func() map[string]string {
+			elements := make(map[string]string, len(config.UserContext.Elements()))
+			diags := config.UserContext.ElementsAs(ctx, &elements, false)
+			resp.Diagnostics.Append(diags...)
+			return elements
+		}(),
+	}
+
+	if !config.NextServer.IsNull() && !config.NextServer.IsUnknown() && config.NextServer.ValueString() != "" {
+		update.NextServer = config.NextServer.ValueString()
+	}
+	if !config.ServerHostname.IsNull() && !config.ServerHostname.IsUnknown() && config.ServerHostname.ValueString() != "" {
+		update.ServerHostname = config.ServerHostname.ValueString()
+	}
+	if !config.BootFileName.IsNull() && !config.BootFileName.IsUnknown() && config.BootFileName.ValueString() != "" {
+		update.BootFileName = config.BootFileName.ValueString()
+	}
 
 	// nolint: contextcheck
-	respData, err := r.client.RemoteSubnet4Set(
-		config.Hostname.ValueString(),
-		[]kea.NewRemoteSubnet4{
-			{
-				ID:     id,
-				Subnet: config.Subnet.ValueString(),
-				Pools: func() []kea.Pool {
-					fr := make([]kea.Pool, 0)
-					for _, p := range config.Pools {
-						fr = append(fr, kea.Pool{Pool: p.Pool.ValueString()})
-					}
-					return fr
-				}(),
-				OptionData: func() []kea.OptionData {
-					fr := make([]kea.OptionData, 0)
-					for _, o := range config.OptionData {
-						code := int(o.Code.ValueInt64())
-						fr = append(fr, kea.OptionData{
-							Code:       &code,
-							Name:       o.Name.ValueString(),
-							Data:       o.Data.ValueString(),
-							AlwaysSend: o.AlwaysSend.ValueBool(),
-						})
-					}
-					return fr
-				}(),
-				Relay: func() kea.Relay {
-					fr := kea.Relay{}
-					if len(config.Relay) == 0 {
-						return fr
-					}
-					for _, ip := range config.Relay {
-						fr.IPAddresses = append(fr.IPAddresses, ip.IPAddress.ValueString())
-					}
-					return fr
-				}(),
-				UserContext: func() map[string]string {
-					elements := make(map[string]string, len(config.UserContext.Elements()))
-					diags := config.UserContext.ElementsAs(ctx, &elements, false)
-					resp.Diagnostics.Append(diags...)
-					return elements
-				}(),
-			},
-		},
-	)
+	respData, err := r.client.RemoteSubnet4Set(config.Hostname.ValueString(), []kea.NewRemoteSubnet4{update})
 	if err != nil {
 		resp.Diagnostics.AddError(
 			"RemoteSubnet4Update",
